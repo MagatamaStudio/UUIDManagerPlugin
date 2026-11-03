@@ -43,15 +43,44 @@
                     <target>1.8</target>
                 </configuration>
             </plugin>
+            <!-- 注意：这里不再配置 <archive><manifestFile>，plugin.yml 属于 resources，
+                 会自动进入 jar 根目录；把它当作 MANIFEST.MF 会导致插件加载失败。 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.2.0</version>
-                <configuration>
-                    <archive>
-                        <manifestFile>src/main/resources/plugin.yml</manifestFile>
-                    </archive>
-                </configuration>
+            </plugin>
+            <!-- sqlite-jdbc 需要与插件一起打包，否则运行时 ClassNotFoundException: org.sqlite.JDBC -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <!-- 不设置 Main-Class：这是 Bukkit 插件，不是可执行 jar -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <!-- 合并 sqlite-jdbc 的 JDBC 服务描述文件，保证 java.sql.Driver 自动发现 -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
